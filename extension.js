@@ -23,10 +23,39 @@ export default class NotificationsPermanent extends Extension {
     constructor(metadata) {
         super(metadata);
         this.nty = null;
+        this.addnty = null;
     }
     enable() {
         // Almacenamos el metodo original
         this.nty = MessageTray.MessageTray.prototype._updateNotificationTimeout;
+
+        // Sobre escribimos la cantidad de mensajes en cola de una misma fuente de notificaciones
+        if (MessageTray.Source.prototype.addNotification) {
+            this.addnty = MessageTray.Source.prototype.addNotification;
+            MessageTray.Source.prototype.addNotification = function(notification) {
+                if (this.notifications.includes(notification))
+                    return;
+        
+                while (this.notifications.length >= 40) {
+                    const [oldest] = this.notifications;
+                    oldest.destroy(NotificationDestroyedReason.EXPIRED);
+                }
+        
+                notification.connect('destroy', this._onNotificationDestroy.bind(this));
+                notification.connect('notify::acknowledged', () => {
+                    this.countUpdated();
+        
+                    // If acknowledged was set to false try to show the notification again
+                    if (!notification.acknowledged)
+                        this.emit('notification-request-banner', notification);
+                });
+                this.notifications.push(notification);
+        
+                this.emit('notification-added', notification);
+                this.emit('notification-request-banner', notification);
+                this.countUpdated();
+            };
+        }
 
         // Sobreescribimos el metodo para evitar el tiempo de espera
         MessageTray.MessageTray.prototype._updateNotificationTimeout = function(timeout) {
@@ -38,7 +67,12 @@ export default class NotificationsPermanent extends Extension {
 
     disable() {
         // Restauramos el metodo original
-        MessageTray.MessageTray.prototype._updateNotificationTimeout = this.nty;
+        if (this.nty) {
+            MessageTray.MessageTray.prototype._updateNotificationTimeout = this.nty;
+        }
+        if (this.addnty) {
+            MessageTray.Source.prototype.addNotification = this.addnty;
+        }
 
         Main.notify("Notifications Permanent", "Service Disabled.");
     }
