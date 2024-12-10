@@ -1,0 +1,13 @@
+{
+  "name": "Notifications Permanent",
+  "description": "Keep notifications on the message tray until clicked",
+  "uuid": "notifications-permanent-gnome@GatoArtStudio",
+  "original-author": "GatoArtStudios | https://linktr.ee/GatoArtStudio",
+  "shell-version": [
+    "45",
+    "46",
+    "47"
+  ],
+  "url": "https://github.com/GatoArtStudios/notifications-permanent-gnome",
+  "version": 1
+}
